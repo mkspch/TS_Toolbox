@@ -9,7 +9,8 @@ SCRIPTS_DIR_RELATIVE = "scripts/src"
 
 MENU_NAME = "RightClickConverter"
 MENU_TITLE = "TS_Toolbox"
-SUBMENU_KEY = r"Software\Classes\RightClickConverter.Menu" # No change to key, just the display text
+SUBMENU_KEY_NAME = "RightClickConverter.Menu"
+SUBMENU_KEY_FULL_PATH = r"Software\Classes\%s" % SUBMENU_KEY_NAME # No change to key, just the display text
 
 # List of submenu items: (display_text, script_name)
 SUBMENU_ITEMS = [
@@ -43,12 +44,12 @@ def add_context_menu_entries():
         key_path = r"Software\Classes\*\shell\%s" % MENU_NAME
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:
             winreg.SetValueEx(key, "", 0, winreg.REG_SZ, MENU_TITLE)
-            winreg.SetValueEx(key, "ExtendedSubCommandsKey", 0, winreg.REG_SZ, r"Software\Classes\%s" % SUBMENU_KEY)
+            winreg.SetValueEx(key, "ExtendedSubCommandsKey", 0, winreg.REG_SZ, SUBMENU_KEY_NAME) # Use just the name here
         print(f"Added top-level menu: '{MENU_TITLE}'")
 
         # Define submenu items
         for display_text, script_name in SUBMENU_ITEMS:
-            command_key_path = r"Software\Classes\%s\shell\%s" % (SUBMENU_KEY, display_text.replace(" ", "")) # Use display text as key for simplicity
+            command_key_path = r"%s\shell\%s" % (SUBMENU_KEY_FULL_PATH, display_text.replace(" ", "")) # Use full path here
             with winreg.CreateKey(winreg.HKEY_CURRENT_USER, command_key_path) as key:
                 winreg.SetValueEx(key, "", 0, winreg.REG_SZ, display_text)
                 
@@ -103,8 +104,8 @@ def remove_context_menu_entries():
         print("Attempting to remove context menu entries using winreg.DeleteTree...")
         
         # Delete submenu definitions first (e.g., HKEY_CURRENT_USER\Software\Classes\RightClickConverter.Menu)
-        winreg.DeleteTree(winreg.HKEY_CURRENT_USER, SUBMENU_KEY)
-        print(f"Removed submenu key: '{SUBMENU_KEY}'")
+        winreg.DeleteTree(winreg.HKEY_CURRENT_USER, SUBMENU_KEY_FULL_PATH)
+        print(f"Removed submenu key: '{SUBMENU_KEY_FULL_PATH}'")
 
         # Delete top-level menu entry (e.g., HKEY_CURRENT_USER\Software\Classes\*\shell\RightClickConverter)
         winreg.DeleteTree(winreg.HKEY_CURRENT_USER, r"Software\Classes\*\shell\%s" % MENU_NAME)
@@ -117,8 +118,8 @@ def remove_context_menu_entries():
         print("winreg.DeleteTree not available, falling back to recursive deletion.")
         try:
             # Delete submenu definitions first
-            recursive_delete_key(winreg.HKEY_CURRENT_USER, SUBMENU_KEY)
-            print(f"Removed submenu key: '{SUBMENU_KEY}' using recursive_delete_key.")
+            recursive_delete_key(winreg.HKEY_CURRENT_USER, SUBMENU_KEY_FULL_PATH)
+            print(f"Removed submenu key: '{SUBMENU_KEY_FULL_PATH}' using recursive_delete_key.")
 
             # Delete top-level menu entry using recursive fallback
             recursive_delete_key(winreg.HKEY_CURRENT_USER, r"Software\Classes\*\shell\%s" % MENU_NAME)
