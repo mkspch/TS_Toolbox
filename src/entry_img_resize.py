@@ -43,14 +43,11 @@ def main():
         success = converter.convert_img_resize(image_path, new_width)
 
         if success:
-            print("
-Conversion finished successfully!")
+            print("\nConversion finished successfully!")
         else:
-            print("
-Conversion failed. Please check the errors above.")
+            print("\nConversion failed. Please check the errors above.")
     except Exception as e:
-        print(f"
-An unhandled error occurred: {e}")
+        print(f"\nAn unhandled error occurred: {e}")
         import traceback
         traceback.print_exc()
     finally:

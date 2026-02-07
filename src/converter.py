@@ -1,192 +1,266 @@
 import os
 import subprocess
-import sys
+import tempfile
+import shutil
+import numpy as np
+import utils
 from PIL import Image
 
-# This allows the script to find the 'utils' module.
-sys.path.append(os.path.dirname(__file__))
-import utils
+try:
+    import PyOpenColorIO as OCIO
+    import OpenImageIO as OIIO
+except ImportError:
+    print("FATAL ERROR: PyOpenColorIO or OpenImageIO not found.")
+    print("Please ensure these libraries are installed in the portable python environment.")
+    OCIO = None
+    OIIO = None
 
-# --- Configuration ---
-# Path to the OCIO configuration file for color space transformations.
-OCIO_CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config', 'aces_1.2', 'config.ocio')
+FFMPEG_EXE = r"C:\Users\nhb\AppData\Local\Programs\TS_Toolbox\ffmpeg\bin\ffmpeg.exe"
 
-def get_oiiotool_path():
-    """Check common paths for oiiotool executable."""
-    # You might need to adjust this to your system's OpenImageIO installation path
-    possible_paths = [
-        "C:/Program Files/OpenImageIO/bin/oiiotool.exe",
-        "/usr/bin/oiiotool",
-        "/usr/local/bin/oiiotool"
-    ]
-    for path in possible_paths:
-        if os.path.exists(path):
-            return path
-    return "oiiotool" # Fallback to assuming it's in the system PATH
+def convert_mp4_to_png_sequence(video_path):
+    print(f"DEBUG: FFMPEG_EXE resolved to: {FFMPEG_EXE}")
+    if not os.path.exists(FFMPEG_EXE):
+        print(f"ERROR: FFmpeg executable not found at '{FFMPEG_EXE}'.")
+        print("Please ensure FFmpeg is correctly installed and accessible at this path.")
+        return False
+    print(f"Using FFmpeg executable: {FFMPEG_EXE}")
 
-def convert_exr_to_srgb_mp4(image_path, framerate=25):
-    """
-    Converts a sequence of EXR files (assumed to be ACEScg) to an sRGB MP4 video.
-    """
-    print("Starting EXR to sRGB MP4 conversion...")
-    sequence_files, start_frame, pattern = utils.find_sequence_files(image_path)
-
-    if not sequence_files:
-        print(f"Error: No image sequence found for '{image_path}'.")
+    if not os.path.exists(video_path):
+        print(f"Error: Video file not found at {video_path}")
         return False
 
-    output_dir = os.path.join(os.path.dirname(image_path), "sRGB_conv")
+    video_dir = os.path.dirname(video_path)
+    video_filename = os.path.basename(video_path)
+    base_name, _ = os.path.splitext(video_filename)
+
+    output_dir = os.path.join(video_dir, base_name)
     os.makedirs(output_dir, exist_ok=True)
-    
-    temp_pattern = os.path.join(output_dir, f"frame.%0{len(str(start_frame))}d.png")
-    
-    oiiotool_path = get_oiiotool_path()
 
-    # OIIOtool command to convert ACEScg EXR to sRGB PNG
-    oiiotool_cmd = [
-        oiiotool_path,
-        pattern,
-        "--colorconfig", OCIO_CONFIG_PATH,
-        "--colorconvert", "ACES - ACEScg", "Output - sRGB",
-        "-o", temp_pattern
+    output_pattern = os.path.join(output_dir, f"{base_name}_%04d.png")
+
+    print(f"Starting conversion of {video_filename} to PNG sequence...")
+    command = [
+        FFMPEG_EXE,
+        '-i', video_path,
+        output_pattern
     ]
 
-    print(f"Running OIIOtool command: {' '.join(oiiotool_cmd)}")
-    try:
-        subprocess.run(oiiotool_cmd, check=True, capture_output=True, text=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error during OIIOtool conversion: {e}")
-        print(f"Stderr: {e.stderr}")
-        return False
-
-    # FFmpeg command to create MP4 from PNG sequence
-    output_video_path = os.path.splitext(pattern)[0] + "_sRGB.mp4"
-    ffmpeg_cmd = [
-        'ffmpeg',
-        '-y',
-        '-framerate', str(framerate),
-        '-start_number', str(start_frame),
-        '-i', temp_pattern,
-        '-c:v', 'libx264',
-        '-pix_fmt', 'yuv420p',
-        '-crf', '18',
-        output_video_path
-    ]
+    print(f"FFmpeg Command: {' '.join(command)}")
     
-    print(f"Running FFmpeg command: {' '.join(ffmpeg_cmd)}")
     try:
-        subprocess.run(ffmpeg_cmd, check=True, capture_output=True, text=True)
-        print(f"Successfully created video: {output_video_path}")
+        subprocess.run(command, executable=FFMPEG_EXE, check=True, capture_output=False, text=True) 
+        print(f"Successfully converted video to PNG sequence in {output_dir}")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"Error during FFmpeg conversion: {e}")
-        print(f"Stderr: {e.stderr}")
+        print("Error during FFmpeg execution:")
+        print(f"Command: {' '.join(command)}")
+        print(f"Return Code: {e.returncode}")
+        print(f"Output: {e.stdout}")
+        print(f"Error Output: {e.stderr}")
         return False
-    finally:
-        # Clean up temporary PNG files
-        for f in os.listdir(output_dir):
-            if f.startswith("frame.") and f.endswith(".png"):
-                os.remove(os.path.join(output_dir, f))
-        os.rmdir(output_dir)
-
-    print(f"Output video created at: {output_video_path}")
-    return True
 
 
-def convert_sequence_to_mp4(image_path, framerate=25):
-    """
-    Converts a generic image sequence (e.g., PNG, JPG) to an MP4 video.
-    """
-    print("Starting image sequence to MP4 conversion...")
-    sequence_files, start_frame, pattern = utils.find_sequence_files(image_path)
+def convert_mp4_to_jpg_sequence(video_path, quality=90):
+    print(f"DEBUG: FFMPEG_EXE resolved to: {FFMPEG_EXE}")
+    if not os.path.exists(FFMPEG_EXE):
+        print(f"ERROR: FFmpeg executable not found at '{FFMPEG_EXE}'.")
+        print("Please ensure FFmpeg is correctly installed and accessible at this path.")
+        return False
+    print(f"Using FFmpeg executable: {FFMPEG_EXE}")
+
+    if not os.path.exists(video_path):
+        print(f"Error: Video file not found at {video_path}")
+        return False
+
+    video_dir = os.path.dirname(video_path)
+    video_filename = os.path.basename(video_path)
+    base_name, _ = os.path.splitext(video_filename)
+
+    output_dir = os.path.join(video_dir, base_name)
+    os.makedirs(output_dir, exist_ok=True)
+
+    output_pattern = os.path.join(output_dir, f"{base_name}_%04d.jpg")
+
+    print(f"Starting conversion of {video_filename} to JPG sequence...")
+    ffmpeg_q_value = 2 + (100 - quality) * 29 // 99
+    ffmpeg_q_value = max(2, min(31, ffmpeg_q_value))
+    print(f"DEBUG: Using FFmpeg -q:v quality: {ffmpeg_q_value} (from input quality {quality})")
+
+    command = [
+        FFMPEG_EXE,
+        '-i', video_path,
+        '-q:v', str(ffmpeg_q_value),
+        output_pattern
+    ]
+
+    print(f"FFmpeg Command: {' '.join(command)}")
     
-    if not sequence_files:
-        print(f"Error: No image sequence found for '{image_path}'.")
+    try:
+        subprocess.run(command, executable=FFMPEG_EXE, check=True, capture_output=False, text=True) 
+        print(f"Successfully converted video to JPG sequence in {output_dir}")
+        return True
+    except subprocess.CalledProcessError as e:
+        print("Error during FFmpeg execution:")
+        print(f"Command: {' '.join(command)}")
+        print(f"Return Code: {e.returncode}")
+        print(f"Output: {e.stdout}")
+        print(f"Error Output: {e.stderr}")
         return False
 
-    output_path = os.path.splitext(pattern.replace(f'%0{len(str(start_frame))}d', ''))[0] + ".mp4"
 
-    ffmpeg_cmd = [
-        'ffmpeg',
-        '-y', # Overwrite output file if it exists
+def convert_sequence_to_mp4(first_file_path, framerate=25, output_path=None):
+    print(f"DEBUG: FFMPEG_EXE resolved to: {FFMPEG_EXE}")
+    if not os.path.exists(FFMPEG_EXE):
+        print(f"ERROR: FFmpeg executable not found at '{FFMPEG_EXE}'.")
+        print("Please ensure FFmpeg is correctly installed and accessible at this path.")
+        return False
+    print(f"Using FFmpeg executable: {FFMPEG_EXE}")
+    files, start_frame, sequence_pattern = utils.find_sequence_files(first_file_path)
+
+    if not files:
+        print("Error: Could not find sequence.")
+        return False
+
+    if not output_path:
+        output_dir = os.path.dirname(first_file_path)
+        base_name = os.path.basename(sequence_pattern).split('%')[0].rstrip('._-')
+        if not base_name:
+            base_name = "output"
+        output_path = os.path.join(output_dir, f"{base_name}.mp4")
+
+    print(f"Starting conversion of sequence {os.path.basename(sequence_pattern)} to MP4...")
+
+    command = [
+        FFMPEG_EXE,
         '-framerate', str(framerate),
         '-start_number', str(start_frame),
-        '-i', pattern,
-        '-c:v', 'libx264',   # Use H.264 codec
-        '-pix_fmt', 'yuv420p', # Pixel format for wide compatibility
-        '-crf', '18',        # Constant Rate Factor (quality, lower is better)
+        '-i', sequence_pattern,
+        '-c:v', 'libx264',
+        '-pix_fmt', 'yuv420p',
+        '-y',
         output_path
     ]
 
-    print(f"Running command: {' '.join(ffmpeg_cmd)}")
+    print(f"FFmpeg Command: {' '.join(command)}")
     try:
-        subprocess.run(ffmpeg_cmd, check=True, capture_output=True, text=True)
+        subprocess.run(command, executable=FFMPEG_EXE, check=True, capture_output=True, text=True)
         print(f"Successfully created video: {output_path}")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"Error during conversion: {e}")
-        print(f"FFmpeg stderr: {e.stderr}")
+        print("Error during FFmpeg execution:")
+        print(f"Command: {' '.join(command)}")
+        print(f"Return Code: {e.returncode}")
+        print(f"Output: {e.stdout}")
+        print(f"Error Output: {e.stderr}")
         return False
 
-def convert_mp4_to_png_sequence(video_path):
-    """
-    Converts an MP4 video to a sequence of PNG images.
-    """
-    print(f"Starting MP4 to PNG conversion for '{os.path.basename(video_path)}'...")
-    output_folder_name = os.path.splitext(os.path.basename(video_path))[0] + "_png_sequence"
-    output_dir = os.path.join(os.path.dirname(video_path), output_folder_name)
-    os.makedirs(output_dir, exist_ok=True)
-    
-    output_pattern = os.path.join(output_dir, "frame.%04d.png")
+def convert_exr_to_srgb_mp4(first_file_path, framerate=25):
+    if not OCIO or not OIIO:
+        return False
+
+    exr_files, start_frame, sequence_pattern = utils.find_sequence_files(first_file_path)
+
+    if not exr_files:
+        print("Error: Could not find EXR sequence.")
+        return False
+        
+    output_dir = os.path.dirname(first_file_path)
+    base_name = os.path.basename(sequence_pattern).split('%')[0].rstrip('._-')
+    final_output_path = os.path.join(output_dir, f"{base_name}_sRGB.mp4")
+
+    ocio_config_path = os.path.join(os.path.dirname(__file__), 'config', 'aces_1.2', 'config.ocio')
+    if not os.path.exists(ocio_config_path):
+        print(f"CRITICAL ERROR: OCIO config not found at {ocio_config_path}")
+        return False
+
+    try:
+        config = OCIO.Config.CreateFromFile(ocio_config_path)
+        processor = config.getProcessor("ACEScg", "Output - sRGB")
+    except Exception as e:
+        print(f"OCIO Error: Could not set up color processor. {e}")
+        return False
+
+    first_img_buf = OIIO.ImageBuf(exr_files[0])
+    output_width = first_img_buf.spec().width
+    output_height = first_img_buf.spec().height
+
+    ffmpeg_pixel_format = "rgb48le"
 
     ffmpeg_cmd = [
-        'ffmpeg',
-        '-i', video_path,
-        output_pattern
+        FFMPEG_EXE,
+        "-hide_banner", "-loglevel", "info", "-y",
+        "-f", "rawvideo",
+        "-pixel_format", ffmpeg_pixel_format,
+        "-video_size", f"{output_width}x{output_height}",
+        "-framerate", str(framerate),
+        "-i", "pipe:0",
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-preset", "medium",
+        "-crf", "23",
+        final_output_path
     ]
 
-    print(f"Running command: {' '.join(ffmpeg_cmd)}")
+    print(f"DEBUG: FFmpeg command: {' '.join(ffmpeg_cmd)}")
+
     try:
-        subprocess.run(ffmpeg_cmd, check=True, capture_output=True, text=True)
-        print(f"Successfully exported PNG sequence to: {output_dir}")
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Error during conversion: {e}")
-        print(f"FFmpeg stderr: {e.stderr}")
+        ffproc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE, executable=FFMPEG_EXE)
+    except FileNotFoundError:
+        print(f"CRITICAL ERROR: FFmpeg executable not found at '{FFMPEG_EXE}'.")
+        print("Please ensure FFmpeg is correctly installed.")
+        return False
+    except Exception as e:
+        print(f"CRITICAL ERROR: Failed to start FFmpeg subprocess: {e}")
         return False
 
-def convert_mp4_to_jpg_sequence(video_path, quality=90):
-    """
-    Converts an MP4 video to a sequence of JPG images.
-    """
-    print(f"Starting MP4 to JPG conversion for '{os.path.basename(video_path)}'...")
-    output_folder_name = os.path.splitext(os.path.basename(video_path))[0] + "_jpg_sequence"
-    output_dir = os.path.join(os.path.dirname(video_path), output_folder_name)
-    os.makedirs(output_dir, exist_ok=True)
-    
-    output_pattern = os.path.join(output_dir, "frame.%04d.jpg")
-    
-    # JPEG quality in ffmpeg is -q:v, from 2 (best) to 31 (worst). Let's map 1-100 to that.
-    # Simple linear mapping: 100 -> 2, 1 -> 31
-    q_scale = int(2 + (100 - quality) * (29 / 99.0))
-
-    ffmpeg_cmd = [
-        'ffmpeg',
-        '-i', video_path,
-        '-q:v', str(q_scale),
-        output_pattern
-    ]
-
-    print(f"Running command: {' '.join(ffmpeg_cmd)}")
+    print("Starting color conversion and piping to FFmpeg...")
     try:
-        subprocess.run(ffmpeg_cmd, check=True, capture_output=True, text=True)
-        print(f"Successfully exported JPG sequence to: {output_dir}")
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Error during conversion: {e}")
-        print(f"FFmpeg stderr: {e.stderr}")
-        return False
+        for i, exr_path in enumerate(exr_files):
+            print(f"  Processing frame {start_frame + i} ({i+1}/{len(exr_files)}): {os.path.basename(exr_path)}")
+            
+            img_buf = OIIO.ImageBuf(exr_path)
 
+            OIIO.ImageBufAlgo.channels(img_buf, img_buf, (0,1,2))
+            
+            success_ocio = OIIO.ImageBufAlgo.colorconvert(img_buf, img_buf, "ACEScg", "Output - sRGB", colorconfig=ocio_config_path)
+            if not success_ocio:
+                print(f"OCIO Color Convert failed for frame {start_frame + i}. Check OCIO config and colorspace names.")
+                return False
+
+            if img_buf.spec().width != output_width or img_buf.spec().height != output_height:
+                print(f"DEBUG: Resizing frame {start_frame + i} from {img_buf.spec().width}x{img_buf.spec().height} to {output_width}x{output_height}")
+                img_buf = OIIO.ImageBufAlgo.resize(img_buf, "box", roi=OIIO.ROI(0, output_width, 0, output_height))
+
+            pixels_raw = img_buf.get_pixels(OIIO.UINT16)
+
+            print(f"DEBUG: Frame {start_frame + i} - Pixels raw shape: {pixels_raw.shape}, dtype: {pixels_raw.dtype}")
+            expected_bytes = output_width * output_height * 3 * 2
+            actual_bytes = len(pixels_raw.tobytes())
+            print(f"DEBUG: Frame {start_frame + i} - Pixels raw byte length: {actual_bytes}, Expected: {expected_bytes}")
+            if actual_bytes != expected_bytes:
+                print("CRITICAL ERROR: Mismatch in pixel data byte length!")
+                return False
+
+            ffproc.stdin.write(pixels_raw.tobytes())
+
+        print("Color conversion and piping complete. Waiting for FFmpeg to finish...")
+        ffproc.stdin.close()
+        stdout, stderr = ffproc.communicate()
+
+        if ffproc.returncode != 0:
+            print(f"ERROR: FFmpeg exited with error code {ffproc.returncode}")
+            print("FFmpeg stdout:\n", stdout.decode())
+            print("FFmpeg stderr:\n", stderr.stderr.decode())
+            return False
+        else:
+            print("FFmpeg encoding finished successfully!")
+            return True
+
+    except Exception as e:
+        print(f"An error occurred during the conversion process: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 def convert_img_half_size(image_path):
     """
     Scales down the selected image file to half its size, maintaining aspect ratio.

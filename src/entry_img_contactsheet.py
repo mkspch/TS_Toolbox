@@ -36,11 +36,9 @@ def main():
     success = converter.create_contact_sheet(valid_image_paths)
 
     if success:
-        print("
-Contact sheet created successfully!")
+        print("\nContact sheet created successfully!")
     else:
-        print("
-Failed to create contact sheet. Please check the errors above.")
+        print("\nFailed to create contact sheet. Please check the errors above.")
     print("Press Enter to exit.")
     input()
 

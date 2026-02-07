@@ -27,11 +27,9 @@ def main():
     success = converter.convert_img_half_size(image_path)
 
     if success:
-        print("
-Conversion finished successfully!")
+        print("\nConversion finished successfully!")
     else:
-        print("
-Conversion failed. Please check the errors above.")
+        print("\nConversion failed. Please check the errors above.")
     print("Press Enter to exit.")
     input()
 

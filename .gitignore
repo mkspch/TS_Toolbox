@@ -1,2 +1,4 @@
 .gemini/
 gha-creds-*.json
+test/
+
