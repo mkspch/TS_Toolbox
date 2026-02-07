@@ -2,7 +2,7 @@
 setlocal
 
 :: ============================================================================
-:: Right-Click Converter Toolbox - Uninstallation Script
+:: TS_Toolbox - Uninstallation Script
 :: ============================================================================
 :: This script removes the context menu entries and deletes the installed
 :: portable tools and scripts.
@@ -26,7 +26,7 @@ set "SCRIPTS_DIR=%TOOL_DIR%\scripts"
 
 echo.
 echo =================================================
-echo  Starting Converter Toolbox Uninstallation
+echo  Starting TS_Toolbox Uninstallation
 echo =================================================
 echo.
 
@@ -61,7 +61,7 @@ echo =================================================
 echo  Uninstallation Complete
 echo =================================================
 echo.
-echo The Right-Click Converter Toolbox has been removed.
+echo The TS_Toolbox has been removed.
 echo.
 
 pause

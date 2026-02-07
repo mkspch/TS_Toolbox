@@ -1,4 +1,4 @@
 .gemini/
 gha-creds-*.json
 test/
-
+install_no_downloads.bat

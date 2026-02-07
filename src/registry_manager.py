@@ -1,35 +1,42 @@
 import sys
 import os
 import winreg
+import shutil # For simple bat file copy fallback
 
 # Configuration for the context menu entries
-# These paths are relative to the 'TS_Toolbox' installation directory
 PYTHON_EXECUTABLE_RELATIVE = "python/python.exe"
 SCRIPTS_DIR_RELATIVE = "scripts/src"
 
 MENU_NAME = "TS_Toolbox"
 MENU_TITLE = "TS_Toolbox"
 SUBMENU_KEY_NAME = "TS_Toolbox.Menu"
-SUBMENU_KEY_FULL_PATH = r"Software\Classes\%s" % SUBMENU_KEY_NAME # No change to key, just the display text
+SUBMENU_KEY_FULL_PATH = r"Software\Classes\%s" % SUBMENU_KEY_NAME
 
-# List of submenu items: (display_text, script_name)
+# List of submenu items for regular right-click (including Contact Sheet)
 SUBMENU_ITEMS = [
     ("VID > PNG", "entry_mp4_to_png.py"),
-    ("VID > JPG", "entry_mp4_to_jpg.py"), # New entry
+    ("VID > JPG", "entry_mp4_to_jpg.py"),
     ("IMG > MP4", "entry_seq_to_mp4.py"),
     ("EXR > MP4 (ACEScg-sRGB)", "entry_exr_to_mp4.py"),
-    ("IMG > Half Size", "entry_img_half_size.py"), # New entry
-    ("IMG > Resize", "entry_img_resize.py"), # New entry
-    ("IMG > Contact Sheet", "entry_img_contactsheet.py"), # New entry
+    ("IMG > Half Size", "entry_img_half_size.py"),
+    ("IMG > Resize", "entry_img_resize.py"),
+    ("IMG > Contact Sheet", "entry_img_contactsheet.py"), # Re-added
 ]
 
 def get_install_root_path():
     """Determines the root installation path of TS_Toolbox."""
-    # Assumes this script is in %TOOL_DIR%\scripts\src
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Go up two levels: src -> scripts -> TS_Toolbox
     install_root = os.path.abspath(os.path.join(script_dir, os.pardir, os.pardir))
     return install_root
+
+# --- SendTo functions (removed as per plan) ---
+# def add_sendto_entry():
+#     # ... (removed content) ...
+#     return True
+# def remove_sendto_entry():
+#     # ... (removed content) ...
+#     return True
+
 
 def add_context_menu_entries():
     install_root = get_install_root_path()
@@ -44,26 +51,26 @@ def add_context_menu_entries():
         return False
 
     try:
-        # Create top-level menu entry (appears when right-clicking any file)
         key_path = r"Software\Classes\*\shell\%s" % MENU_NAME
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:
             winreg.SetValueEx(key, "", 0, winreg.REG_SZ, MENU_TITLE)
-            winreg.SetValueEx(key, "ExtendedSubCommandsKey", 0, winreg.REG_SZ, SUBMENU_KEY_NAME) # Use just the name here
+            winreg.SetValueEx(key, "ExtendedSubCommandsKey", 0, winreg.REG_SZ, SUBMENU_KEY_NAME)
         print(f"Added top-level menu: '{MENU_TITLE}'")
 
-        # Define submenu items
         for display_text, script_name in SUBMENU_ITEMS:
-            command_key_path = r"%s\shell\%s" % (SUBMENU_KEY_FULL_PATH, display_text.replace(" ", "")) # Use full path here
+            command_key_path = r"%s\shell\%s" % (SUBMENU_KEY_FULL_PATH, display_text.replace(" ", ""))
             with winreg.CreateKey(winreg.HKEY_CURRENT_USER, command_key_path) as key:
                 winreg.SetValueEx(key, "", 0, winreg.REG_SZ, display_text)
                 
-                # Use %V for single file, %* for multiple files (for contact sheet)
+                # Wrap all commands in cmd.exe /K to keep the window open
                 if display_text == "VID > JPG":
-                    command = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}" "%V" --quality 90'
-                elif display_text == "IMG > Contact Sheet":
-                    command = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}" "%*"'
+                    command_args = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}" "%V" --quality 90'
+                elif display_text == "IMG > Contact Sheet": # For contact sheet, pywin32 fetches files
+                    command_args = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}"' # No args needed, script gets selection
                 else:
-                    command = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}" "%V"'
+                    command_args = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}" "%V"'
+                
+                command = f'cmd.exe /c "{command_args}"'
                 with winreg.CreateKey(key, "command") as cmd_key:
                     winreg.SetValueEx(cmd_key, "", 0, winreg.REG_SZ, command)
             print(f"  Added submenu item: '{display_text}'")
@@ -80,57 +87,48 @@ def recursive_delete_key(hkey, full_key_path_from_hkey):
     """
     Recursively deletes a registry key and all its subkeys.
     hkey is a pre-defined key like HKEY_CLASSES_ROOT.
-    full_key_path_from_hkey is the full path from hkey (e.g., r"*\shell\RightClickConverter").
+    full_key_path_from_hkey is the full path from hkey.
     """
     try:
-        # Extract parent path and key name from full_key_path_from_hkey
         path_parts = full_key_path_from_hkey.split('\\')
         key_to_delete_name = path_parts[-1]
         parent_path = '\\'.join(path_parts[:-1])
 
         with winreg.OpenKey(hkey, parent_path, 0, winreg.KEY_ALL_ACCESS) as parent_key_handle:
             try:
-                # Enumerate and delete subkeys if any
                 while True:
                     subkey_name_to_delete = winreg.EnumKey(winreg.OpenKey(parent_key_handle, key_to_delete_name, 0, winreg.KEY_ALL_ACCESS), 0)
                     recursive_delete_key(parent_key_handle, os.path.join(key_to_delete_name, subkey_name_to_delete))
-            except OSError: # No more subkeys
-                pass # All subkeys deleted or none existed
-            except FileNotFoundError: # Key_to_delete_name doesn't exist
+            except OSError:
+                pass
+            except FileNotFoundError:
                 pass
             
-            # Delete the key itself
             winreg.DeleteKey(parent_key_handle, key_to_delete_name)
     except FileNotFoundError:
-        pass # Key or its parent already doesn't exist, nothing to delete
+        pass
     except Exception as e:
         print(f"Error in recursive_delete_key for {os.path.join(str(hkey), full_key_path_from_hkey)}: {e}")
-        raise # Re-raise other unexpected errors
+        raise
 
 def remove_context_menu_entries():
     try:
-        # Attempt to remove using winreg.DeleteTree (Python 3.8+ specific)
         print("Attempting to remove context menu entries using winreg.DeleteTree...")
         
-        # Delete submenu definitions first (e.g., HKEY_CURRENT_USER\Software\Classes\RightClickConverter.Menu)
         winreg.DeleteTree(winreg.HKEY_CURRENT_USER, SUBMENU_KEY_FULL_PATH)
         print(f"Removed submenu key: '{SUBMENU_KEY_FULL_PATH}'")
 
-        # Delete top-level menu entry (e.g., HKEY_CURRENT_USER\Software\Classes\*\shell\RightClickConverter)
         winreg.DeleteTree(winreg.HKEY_CURRENT_USER, r"Software\Classes\*\shell\%s" % MENU_NAME)
         print(f"Removed top-level menu: '{MENU_TITLE}'")
         
         print("Context menu entries removed successfully using winreg.DeleteTree.")
         return True
     except AttributeError:
-        # Fallback for Python versions < 3.8 or environments where DeleteTree is missing
         print("winreg.DeleteTree not available, falling back to recursive deletion.")
         try:
-            # Delete submenu definitions first
             recursive_delete_key(winreg.HKEY_CURRENT_USER, SUBMENU_KEY_FULL_PATH)
             print(f"Removed submenu key: '{SUBMENU_KEY_FULL_PATH}' using recursive_delete_key.")
 
-            # Delete top-level menu entry using recursive fallback
             recursive_delete_key(winreg.HKEY_CURRENT_USER, r"Software\Classes\*\shell\%s" % MENU_NAME)
             print(f"Removed top-level menu: '{MENU_TITLE}' using recursive_delete_key.")
 
@@ -157,9 +155,13 @@ if __name__ == "__main__":
     if command == "install":
         if not add_context_menu_entries():
             sys.exit(1)
+        # if not add_sendto_entry(): # Removed SendTo install
+        #     sys.exit(1)
     elif command == "uninstall":
         if not remove_context_menu_entries():
             sys.exit(1)
+        # if not remove_sendto_entry(): # Removed SendTo uninstall
+        #     sys.exit(1)
     else:
         print(f"Invalid command: {command}. Use 'install' or 'uninstall'.")
         sys.exit(1)

@@ -49,7 +49,7 @@ set "SCRIPTS_REPO_URL=https://github.com/mkspch/TS_Toolbox.git"
 set "SCRIPTS_DIR=%TOOL_DIR%\scripts"
 
 :: --- Python Dependencies ---
-set "PYTHON_DEPS=opencolorio openimageio Pillow"
+set "PYTHON_DEPS=opencolorio openimageio Pillow pywin32"
 
 :: ----------------------------------------------------------------------------
 :: Installation Steps
@@ -57,7 +57,7 @@ set "PYTHON_DEPS=opencolorio openimageio Pillow"
 
 echo.
 echo =================================================
-echo  Starting Converter Toolbox Installation
+echo  Starting TS_Toolbox Installation
 echo =================================================
 echo.
 echo Installation Directory: %TOOL_DIR%
@@ -127,15 +127,15 @@ echo    Done.
 echo.
 
 
-:: 6. Add to Path and Registry Keys for Context Menu
-echo [STEP 6/7] Adding FFmpeg to user PATH and creating context menu entries...
+:: 6. Add to Path and Registry Keys for Context Menu and SendTo entry
+echo [STEP 6/7] Creating context menu entries and SendTo entry...
 
 echo    Done.
 
-echo    Calling Python script to create context menu entries...
+echo    Calling Python script to create context menu entries and SendTo entry...
 "%PYTHON_DIR%\python.exe" "%SCRIPTS_DIR%\src\registry_manager.py" install
 if %errorlevel% neq 0 (
-    echo [ERROR] Failed to add registry entries. Please ensure you run install.bat as Administrator.
+    echo [ERROR] Failed to add registry entries or SendTo entry. Please ensure you run install.bat as Administrator.
     goto:error
 )
 
