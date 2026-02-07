@@ -2,7 +2,7 @@
 setlocal
 
 :: ============================================================================
-:: Right-Click Converter Toolbox - Installation Script
+:: TS_Toolbox - Installation Script
 :: ============================================================================
 :: This script downloads and sets up a portable environment for the converter
 :: toolbox, and integrates it with the Windows context menu.
@@ -49,7 +49,7 @@ set "SCRIPTS_REPO_URL=https://github.com/mkspch/TS_Toolbox.git"
 set "SCRIPTS_DIR=%TOOL_DIR%\scripts"
 
 :: --- Python Dependencies ---
-set "PYTHON_DEPS=opencolorio openimageio"
+set "PYTHON_DEPS=opencolorio openimageio Pillow"
 
 :: ----------------------------------------------------------------------------
 :: Installation Steps
@@ -150,7 +150,7 @@ echo =================================================
 echo  Installation Complete!
 echo =================================================
 echo.
-echo The Right-Click Converter Toolbox should now be available.
+echo The TS_Toolbox should now be available.
 echo.
 goto:end
 

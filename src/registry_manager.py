@@ -3,7 +3,7 @@ import os
 import winreg
 
 # Configuration for the context menu entries
-# These paths are relative to the 'RightClickConverter' installation directory
+# These paths are relative to the 'TS_Toolbox' installation directory
 PYTHON_EXECUTABLE_RELATIVE = "python/python.exe"
 SCRIPTS_DIR_RELATIVE = "scripts/src"
 
@@ -18,13 +18,16 @@ SUBMENU_ITEMS = [
     ("VID > JPG", "entry_mp4_to_jpg.py"), # New entry
     ("IMG > MP4", "entry_seq_to_mp4.py"),
     ("EXR > MP4 (ACEScg-sRGB)", "entry_exr_to_mp4.py"),
+    ("IMG > Half Size", "entry_img_half_size.py"), # New entry
+    ("IMG > Resize", "entry_img_resize.py"), # New entry
+    ("IMG > Contact Sheet", "entry_img_contactsheet.py"), # New entry
 ]
 
 def get_install_root_path():
-    """Determines the root installation path of RightClickConverter."""
+    """Determines the root installation path of TS_Toolbox."""
     # Assumes this script is in %TOOL_DIR%\scripts\src
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Go up two levels: src -> scripts -> RightClickConverter
+    # Go up two levels: src -> scripts -> TS_Toolbox
     install_root = os.path.abspath(os.path.join(script_dir, os.pardir, os.pardir))
     return install_root
 
@@ -54,10 +57,11 @@ def add_context_menu_entries():
             with winreg.CreateKey(winreg.HKEY_CURRENT_USER, command_key_path) as key:
                 winreg.SetValueEx(key, "", 0, winreg.REG_SZ, display_text)
                 
-                # Use %V to pass the selected file/folder path
-                # For VID > JPG, pass a default quality of 90
+                # Use %V for single file, %* for multiple files (for contact sheet)
                 if display_text == "VID > JPG":
                     command = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}" "%V" --quality 90'
+                elif display_text == "IMG > Contact Sheet":
+                    command = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}" "%*"'
                 else:
                     command = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}" "%V"'
                 with winreg.CreateKey(key, "command") as cmd_key:
