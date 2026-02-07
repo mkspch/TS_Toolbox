@@ -105,10 +105,15 @@ def convert_mp4_to_jpg_sequence(video_path, quality=90):
     output_pattern = os.path.join(output_dir, f"{base_name}_%04d.jpg")
 
     print(f"Starting conversion of {video_filename} to JPG sequence...")
+    # Translate 1-100 quality (100=best) to FFmpeg -q:v scale (2=best, 31=worst)
+    ffmpeg_q_value = 2 + (100 - quality) * 29 // 99 # Integer division
+    ffmpeg_q_value = max(2, min(31, ffmpeg_q_value)) # Ensure it's within FFmpeg's valid range
+    print(f"DEBUG: Using FFmpeg -q:v quality: {ffmpeg_q_value} (from input quality {quality})")
+
     command = [
         FFMPEG_EXE, # Use the full path to ffmpeg
         '-i', video_path,
-        '-q:v', str(quality), # Set JPEG quality
+        '-q:v', str(ffmpeg_q_value), # Set JPEG quality
         output_pattern
     ]
 
