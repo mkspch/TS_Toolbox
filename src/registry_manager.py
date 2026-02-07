@@ -39,8 +39,8 @@ def add_context_menu_entries():
         return False
 
     try:
-        # Create top-level menu entry (always visible in folder/desktop background)
-        key_path = r"Directory\Background\shell\%s" % MENU_NAME
+        # Create top-level menu entry (appears when right-clicking any file)
+        key_path = r"*\shell\%s" % MENU_NAME
         with winreg.CreateKey(winreg.HKEY_CLASSES_ROOT, key_path) as key:
             winreg.SetValueEx(key, "", 0, winreg.REG_SZ, MENU_TITLE)
             winreg.SetValueEx(key, "ExtendedSubCommandsKey", 0, winreg.REG_SZ, SUBMENU_KEY)
@@ -66,20 +66,46 @@ def add_context_menu_entries():
         print("Please ensure you are running this script with Administrator privileges.")
         return False
 
+def recursive_delete_key(hkey, sub_key_path):
+    """
+    Recursively deletes a registry key and all its subkeys.
+    Mimics winreg.DeleteTree behavior for older Python versions.
+    """
+    try:
+        with winreg.OpenKey(hkey, sub_key_path, 0, winreg.KEY_ALL_ACCESS) as key:
+            while True:
+                try:
+                    # EnumKey raises OSError when no more subkeys
+                    sub_key_name = winreg.EnumKey(key, 0)
+                    recursive_delete_key(key, sub_key_name)
+                except OSError: # No more subkeys
+                    break
+            winreg.DeleteKey(hkey, sub_key_path)
+    except FileNotFoundError:
+        pass # Key already doesn't exist, no need to delete
+    except Exception as e:
+        print(f"Error in recursive_delete_key for {sub_key_path}: {e}")
+        raise # Re-raise other unexpected errors
+
 def remove_context_menu_entries():
     try:
-        # Remove top-level menu entry
-        key_path = r"Directory\Background\shell\%s" % MENU_NAME
+        # Try using DeleteTree first (Python 3.8+)
+        key_path = r"*\shell\%s" % MENU_NAME
         winreg.DeleteTree(winreg.HKEY_CLASSES_ROOT, key_path)
-        print(f"Removed top-level menu: '{MENU_TITLE}'")
-
-        # Remove submenu definitions
         winreg.DeleteTree(winreg.HKEY_CLASSES_ROOT, SUBMENU_KEY)
-        print(f"Removed submenu key: '{SUBMENU_KEY}'")
-        
-        print("Context menu entries removed successfully.")
+        print("Context menu entries removed successfully using DeleteTree.")
         return True
-
+    except AttributeError: # DeleteTree not found, fall back to recursive deletion
+        print("winreg.DeleteTree not available, falling back to recursive deletion.")
+        try:
+            key_path = r"*\shell\%s" % MENU_NAME
+            recursive_delete_key(winreg.HKEY_CLASSES_ROOT, key_path)
+            recursive_delete_key(winreg.HKEY_CLASSES_ROOT, SUBMENU_KEY)
+            print("Context menu entries removed successfully using recursive deletion.")
+            return True
+        except Exception as e:
+            print(f"Error during recursive deletion: {e}")
+            return False
     except FileNotFoundError:
         print("Registry entries not found, nothing to remove.")
         return True

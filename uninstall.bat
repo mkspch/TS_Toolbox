@@ -13,8 +13,12 @@ setlocal
 :: ----------------------------------------------------------------------------
 echo [INFO] Setting up configuration...
 
-:: The main directory for the toolbox
-set "TOOL_DIR=%LOCALAPPDATA%\Programs\RightClickConverter"
+:: The root directory for the portable tools
+set "INSTALL_BASE_DIR=%LOCALAPPDATA%\Programs"
+:: The main directory for this specific toolbox
+set "TOOL_DIR=%INSTALL_BASE_DIR%\RightClickConverter"
+set "PYTHON_DIR=%TOOL_DIR%\python"
+set "SCRIPTS_DIR=%TOOL_DIR%\scripts"
 
 :: ----------------------------------------------------------------------------
 :: Uninstallation Steps
