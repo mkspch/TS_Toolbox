@@ -45,7 +45,7 @@ set "FFMPEG_DIR=%TOOL_DIR%\ffmpeg"
 ::            - luts/Log2_48_nits_Shaper_to_linear.spi1d
 ::            - luts/InvRRT.sRGB.Log2_48_nits_Shaper.spi3d
 ::            - luts/Log2_48_nits_Shaper.RRT.sRGB.spi3d
-set "SCRIPTS_REPO_URL=https://github.com/YOUR_USERNAME/RightClickConverter.git"
+set "SCRIPTS_REPO_URL=https://github.com/mkspch/RightClickConverter.git"
 set "SCRIPTS_DIR=%TOOL_DIR%\scripts"
 
 :: --- Python Dependencies ---
