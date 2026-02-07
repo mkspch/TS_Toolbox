@@ -132,17 +132,19 @@ echo [STEP 6/7] Adding FFmpeg to user PATH and creating context menu entries...
 
 echo    Done.
 
-echo    Creating context menu for .mp4 files...
-REG ADD "HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.mp4\shell\ConvertMP4toPNG" /ve /d "Convert to PNG Sequence" /f
-REG ADD "HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.mp4\shell\ConvertMP4toPNG\command" /ve /d "\"%PYTHON_DIR%\python.exe\" \"%SCRIPTS_DIR%\src\entry_mp4_to_png.py\" \"%%1\"" /f
+echo    Creating non-content sensitive context menu entries with submenu...
+REG ADD "HKEY_CLASSES_ROOT\Directory\Background\shell\RightClickConverter" /ve /d "Right Click Converter" /f
+REG ADD "HKEY_CLASSES_ROOT\Directory\Background\shell\RightClickConverter" /v "ExtendedSubCommandsKey" /d "RightClickConverter.Menu" /f
 
-echo    Creating context menu for .png files...
-REG ADD "HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.png\shell\ConvertPNGtoMP4" /ve /d "Convert Sequence to MP4" /f
-REG ADD "HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.png\shell\ConvertPNGtoMP4\command" /ve /d "\"%PYTHON_DIR%\python.exe\" \"%SCRIPTS_DIR%\src\entry_seq_to_mp4.py\" \"%%1\"" /f
+:: Define submenu items
+REG ADD "HKEY_CLASSES_ROOT\RightClickConverter.Menu\shell\ConvertMP4toPNG" /ve /d "Convert to PNG Sequence" /f
+REG ADD "HKEY_CLASSES_ROOT\RightClickConverter.Menu\shell\ConvertMP4toPNG\command" /ve /d "\"%PYTHON_DIR%\python.exe\" \"%SCRIPTS_DIR%\src\entry_mp4_to_png.py\" \"%%V\"" /f
 
-echo    Creating context menu for .exr files...
-REG ADD "HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.exr\shell\ConvertEXRtoMP4" /ve /d "Convert ACEScg Sequence to sRGB MP4" /f
-REG ADD "HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.exr\shell\ConvertEXRtoMP4\command" /ve /d "\"%PYTHON_DIR%\python.exe\" \"%SCRIPTS_DIR%\src\entry_exr_to_mp4.py\" \"%%1\"" /f
+REG ADD "HKEY_CLASSES_ROOT\RightClickConverter.Menu\shell\ConvertPNGtoMP4" /ve /d "Convert Sequence to MP4" /f
+REG ADD "HKEY_CLASSES_ROOT\RightClickConverter.Menu\shell\ConvertPNGtoMP4\command" /ve /d "\"%PYTHON_DIR%\python.exe\" \"%SCRIPTS_DIR%\src\entry_seq_to_mp4.py\" \"%%V\"" /f
+
+REG ADD "HKEY_CLASSES_ROOT\RightClickConverter.Menu\shell\ConvertEXRtoMP4" /ve /d "Convert ACEScg Sequence to sRGB MP4" /f
+REG ADD "HKEY_CLASSES_ROOT\RightClickConverter.Menu\shell\ConvertEXRtoMP4\command" /ve /d "\"%PYTHON_DIR%\python.exe\" \"%SCRIPTS_DIR%\src\entry_exr_to_mp4.py\" \"%%V\"" /f
 
 echo    Done.
 echo.

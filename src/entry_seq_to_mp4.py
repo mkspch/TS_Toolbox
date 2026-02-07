@@ -27,7 +27,7 @@ def main():
     print(f"File provided for sequence: {file_path}")
     # We can add more logic here to ask for framerate if we want
     # For now, we'll use the default.
-    success = converter.convert_sequence_to_mp4(file_path, framerate=24)
+    success = converter.convert_sequence_to_mp4(file_path, framerate=25)
 
     if success:
         print("\nConversion finished successfully!")

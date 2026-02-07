@@ -2,6 +2,7 @@ import os
 import subprocess
 import tempfile
 import shutil
+import numpy as np
 # from . import utils # Removed relative import
 import utils # Changed to absolute import
 
@@ -72,7 +73,7 @@ def convert_mp4_to_png_sequence(video_path):
         return False
 
 
-def convert_sequence_to_mp4(first_file_path, framerate=24, output_path=None):
+def convert_sequence_to_mp4(first_file_path, framerate=25, output_path=None):
     """
     Converts an image sequence (e.g., PNG, EXR) into an MP4 video.
 
@@ -130,7 +131,7 @@ def convert_sequence_to_mp4(first_file_path, framerate=24, output_path=None):
         print(f"Error Output: {e.stderr}")
         return False
 
-def convert_exr_to_srgb_mp4(first_file_path, framerate=24):
+def convert_exr_to_srgb_mp4(first_file_path, framerate=25):
     """
     Converts an EXR sequence from ACEScg colorspace to an sRGB MP4 video.
     This function performs the color conversion in Python using OpenColorIO
@@ -171,54 +172,100 @@ def convert_exr_to_srgb_mp4(first_file_path, framerate=24):
         print(f"OCIO Error: Could not set up color processor. {e}")
         return False
 
-    # --- Create a temporary directory for intermediate PNGs ---
-    temp_dir = tempfile.mkdtemp(prefix="exr_to_png_")
-    print(f"Created temporary directory for PNG conversion: {temp_dir}")
+    # --- Setup FFmpeg subprocess for direct piping ---
+
+    # Get first frame's dimensions to set output_width and output_height
+    # This assumes all frames in the sequence have the same dimensions
+    first_img_buf = OIIO.ImageBuf(exr_files[0])
+    output_width = first_img_buf.spec().width
+    output_height = first_img_buf.spec().height
+
+    # Define pixel format for FFmpeg input (rgb48le for 16-bit RGB)
+    ffmpeg_pixel_format = "rgb48le"
+
+    # Construct FFmpeg command
+    ffmpeg_cmd = [
+        FFMPEG_EXE,
+        "-hide_banner", "-loglevel", "info", "-y",
+        "-f", "rawvideo",
+        "-pixel_format", ffmpeg_pixel_format,
+        "-video_size", f"{output_width}x{output_height}",
+        "-framerate", str(framerate),
+        "-i", "pipe:0",  # Input from pipe
+        "-c:v", "libx264",      # H.264 codec (can be made configurable)
+        "-pix_fmt", "yuv420p",  # Standard pixel format for compatibility (can be made configurable)
+        "-preset", "medium",    # Encoding preset (can be made configurable)
+        "-crf", "23",           # Constant Rate Factor (quality setting) (can be made configurable)
+        final_output_path
+    ]
+
+    print(f"DEBUG: FFmpeg command: {' '.join(ffmpeg_cmd)}")
 
     try:
-        # --- Convert each EXR to a 16-bit PNG in the temp directory ---
-        print("Starting color conversion from EXR to temporary PNG sequence...")
-        first_png_file = ""
+        ffproc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    except FileNotFoundError:
+        print(f"CRITICAL ERROR: FFmpeg executable not found at '{FFMPEG_EXE}'.")
+        print("Please ensure FFmpeg is correctly installed.")
+        return False
+    except Exception as e:
+        print(f"CRITICAL ERROR: Failed to start FFmpeg subprocess: {e}")
+        return False
+
+    # --- Process each EXR frame and pipe to FFmpeg ---
+    print("Starting color conversion and piping to FFmpeg...")
+    try:
         for i, exr_path in enumerate(exr_files):
-            current_frame_num = start_frame + i
-            print(f"  Processing frame {current_frame_num} ({i+1}/{len(exr_files)}): {os.path.basename(exr_path)}")
+            print(f"  Processing frame {start_frame + i} ({i+1}/{len(exr_files)}): {os.path.basename(exr_path)}")
             
             # Read EXR using OpenImageIO
             img_buf = OIIO.ImageBuf(exr_path)
-            
-            # Process pixels with OCIO
-            # OIIO buffer protocol allows direct pixel access
-            pixels = img_buf.get_pixels(OIIO.FLOAT)
-            processor.apply(pixels)
-            
-            # Create a new buffer for the transformed pixels
-            out_buf = OIIO.ImageBuf(img_buf.spec())
-            out_buf.set_pixels(pixels)
-            
-            # Write to a 16-bit PNG
-            temp_png_path = os.path.join(temp_dir, f"frame_{current_frame_num:04d}.png")
-            out_buf.write(temp_png_path, "uint16")
-            
-            if i == 0:
-                first_png_file = temp_png_path
 
-        print("Color conversion complete.")
+            # Explicitly drop alpha channel if present, to ensure 3-channel RGB for FFmpeg
+            OIIO.ImageBufAlgo.channels(img_buf, img_buf, (0,1,2))
+            
+            # Apply OCIO color transform directly to the ImageBuf
+            # Note: "ACEScg" and "Output - sRGB" are hardcoded here, make configurable if needed
+            success_ocio = OIIO.ImageBufAlgo.colorconvert(img_buf, img_buf, "ACEScg", "Output - sRGB", colorconfig=ocio_config_path)
+            if not success_ocio:
+                print(f"OCIO Color Convert failed for frame {start_frame + i}. Check OCIO config and colorspace names.")
+                return False # Critical failure for this frame
 
-        # --- Encode the temporary PNG sequence to MP4 ---
-        success = convert_sequence_to_mp4(
-            first_file_path=first_png_file,
-            framerate=framerate,
-            output_path=final_output_path
-        )
-        return success
+            # Resize to the consistent output dimensions before extracting pixels
+            if img_buf.spec().width != output_width or img_buf.spec().height != output_height:
+                print(f"DEBUG: Resizing frame {start_frame + i} from {img_buf.spec().width}x{img_buf.spec().height} to {output_width}x{output_height}")
+                img_buf = OIIO.ImageBufAlgo.resize(img_buf, "box", roi=OIIO.ROI(0, output_width, 0, output_height))
+
+            # Get pixels from the transformed ImageBuf directly in UINT16 format
+            # OIIO handles the float-to-UINT16 conversion internally here, with proper scaling/clamping
+            pixels_raw = img_buf.get_pixels(OIIO.UINT16)
+
+            # Debugging raw pixel data
+            print(f"DEBUG: Frame {start_frame + i} - Pixels raw shape: {pixels_raw.shape}, dtype: {pixels_raw.dtype}")
+            expected_bytes = output_width * output_height * 3 * 2 # 3 channels, 2 bytes per uint16
+            actual_bytes = len(pixels_raw.tobytes())
+            print(f"DEBUG: Frame {start_frame + i} - Pixels raw byte length: {actual_bytes}, Expected: {expected_bytes}")
+            if actual_bytes != expected_bytes:
+                print("CRITICAL ERROR: Mismatch in pixel data byte length!")
+                return False
+
+            # Write the raw pixel data to FFmpeg's stdin
+            ffproc.stdin.write(pixels_raw.tobytes())
+
+        print("Color conversion and piping complete. Waiting for FFmpeg to finish...")
+        ffproc.stdin.close() # Close stdin to signal EOF to FFmpeg
+        stdout, stderr = ffproc.communicate()
+
+        if ffproc.returncode != 0:
+            print(f"ERROR: FFmpeg exited with error code {ffproc.returncode}")
+            print("FFmpeg stdout:\n", stdout.decode())
+            print("FFmpeg stderr:\n", stderr.decode())
+            return False
+        else:
+            print("FFmpeg encoding finished successfully!")
+            return True
 
     except Exception as e:
         print(f"An error occurred during the conversion process: {e}")
         import traceback
         traceback.print_exc()
         return False
-    finally:
-        # --- Clean up the temporary directory ---
-        if os.path.exists(temp_dir):
-            print(f"Cleaning up temporary directory: {temp_dir}")
-            shutil.rmtree(temp_dir)
