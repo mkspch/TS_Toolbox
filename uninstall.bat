@@ -29,9 +29,11 @@ echo.
 :: 1. Remove Registry Keys
 echo [STEP 1/2] Removing Windows context menu entries...
 
-REG DELETE "HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.mp4\shell\ConvertMP4toPNG" /f
-REG DELETE "HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.png\shell\ConvertPNGtoMP4" /f
-REG DELETE "HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.exr\shell\ConvertEXRtoMP4" /f
+echo    Calling Python script to remove context menu entries...
+"%PYTHON_DIR%\python.exe" "%SCRIPTS_DIR%\src\registry_manager.py" uninstall
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to remove registry entries. Please ensure you run uninstall.bat as Administrator.
+)
 
 echo    Done.
 echo.
