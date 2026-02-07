@@ -8,14 +8,14 @@ PYTHON_EXECUTABLE_RELATIVE = "python/python.exe"
 SCRIPTS_DIR_RELATIVE = "scripts/src"
 
 MENU_NAME = "RightClickConverter"
-MENU_TITLE = "Right Click Converter"
-SUBMENU_KEY = r"Software\Classes\RightClickConverter.Menu"
+MENU_TITLE = "TS_Toolbox"
+SUBMENU_KEY = r"Software\Classes\RightClickConverter.Menu" # No change to key, just the display text
 
 # List of submenu items: (display_text, script_name)
 SUBMENU_ITEMS = [
-    ("Convert to PNG Sequence", "entry_mp4_to_png.py"),
-    ("Convert Sequence to MP4", "entry_seq_to_mp4.py"),
-    ("Convert ACEScg Sequence to sRGB MP4", "entry_exr_to_mp4.py"),
+    ("VID > PNG", "entry_mp4_to_png.py"),
+    ("IMG > MP4", "entry_seq_to_mp4.py"),
+    ("EXR > MP4 (ACEScg-sRGB)", "entry_exr_to_mp4.py"),
 ]
 
 def get_install_root_path():
