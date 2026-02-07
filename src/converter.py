@@ -2,7 +2,8 @@ import os
 import subprocess
 import tempfile
 import shutil
-from . import utils
+# from . import utils # Removed relative import
+import utils # Changed to absolute import
 
 try:
     import PyOpenColorIO as OCIO
@@ -16,9 +17,7 @@ except ImportError:
 # --- Constants ---
 # In the final version, the installer will place the ffmpeg binary in a known location.
 # For now, we assume it's in the system's PATH.
-FFMPEG_EXE = "ffmpeg" 
-
-# --- Conversion Functions ---
+FFMPEG_EXE = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'ffmpeg', 'bin', 'ffmpeg.exe'))
 
 def convert_mp4_to_png_sequence(video_path):
     """
@@ -30,6 +29,13 @@ def convert_mp4_to_png_sequence(video_path):
     Returns:
         bool: True if successful, False otherwise.
     """
+    print(f"DEBUG: FFMPEG_EXE resolved to: {FFMPEG_EXE}")
+    if not os.path.exists(FFMPEG_EXE):
+        print(f"ERROR: FFmpeg executable not found at '{FFMPEG_EXE}'.")
+        print("Please ensure FFmpeg is correctly installed and accessible at this path.")
+        return False
+    print(f"Using FFmpeg executable: {FFMPEG_EXE}")
+
     if not os.path.exists(video_path):
         print(f"Error: Video file not found at {video_path}")
         return False
@@ -44,16 +50,17 @@ def convert_mp4_to_png_sequence(video_path):
     output_pattern = os.path.join(output_dir, f"{base_name}_%04d.png")
 
     print(f"Starting conversion of {video_filename} to PNG sequence...")
-    
     command = [
-        FFMPEG_EXE,
+        FFMPEG_EXE, # Use the full path to ffmpeg
         '-i', video_path,
         output_pattern
     ]
 
+    print(f"FFmpeg Command: {' '.join(command)}") # Print the command
+    
     try:
-        # Use Popen to have more control over output, but for now, run is fine
-        subprocess.run(command, check=True, capture_output=True, text=True)
+        # Run FFmpeg without capturing output, so it prints directly to console
+        subprocess.run(command, check=True, capture_output=False, text=True) 
         print(f"Successfully converted video to PNG sequence in {output_dir}")
         return True
     except subprocess.CalledProcessError as e:
@@ -72,12 +79,18 @@ def convert_sequence_to_mp4(first_file_path, framerate=24, output_path=None):
     Args:
         first_file_path (str): The path to the first file in the sequence.
         framerate (int): The framerate of the output video.
-        output_path (str, optional): The full path for the output video. 
+        output_path (str, optional): The full path for the output video.
                                      If None, it's generated automatically.
 
     Returns:
         bool: True if successful, False otherwise.
     """
+    print(f"DEBUG: FFMPEG_EXE resolved to: {FFMPEG_EXE}")
+    if not os.path.exists(FFMPEG_EXE):
+        print(f"ERROR: FFmpeg executable not found at '{FFMPEG_EXE}'.")
+        print("Please ensure FFmpeg is correctly installed and accessible at this path.")
+        return False
+    print(f"Using FFmpeg executable: {FFMPEG_EXE}")
     files, start_frame, sequence_pattern = utils.find_sequence_files(first_file_path)
 
     if not files:

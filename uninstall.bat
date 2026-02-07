@@ -57,8 +57,6 @@ echo =================================================
 echo.
 echo The Right-Click Converter Toolbox has been removed.
 echo.
-echo [NOTE] The installer added the FFmpeg directory to your user PATH.
-echo You may want to edit your environment variables to remove it manually.
-echo.
+
 pause
 endlocal

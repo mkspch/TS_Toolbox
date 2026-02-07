@@ -12,14 +12,16 @@ def main():
     """
     if len(sys.argv) < 2:
         print("Error: No file path provided.")
-        input("Press Enter to exit.")
+        print("Press Enter to exit.")
+        input()
         return
 
     file_path = sys.argv[1]
 
     if not os.path.exists(file_path):
         print(f"Error: The file '{file_path}' does not exist.")
-        input("Press Enter to exit.")
+        print("Press Enter to exit.")
+        input()
         return
 
     print(f"File provided for sequence: {file_path}")
@@ -28,13 +30,11 @@ def main():
     success = converter.convert_sequence_to_mp4(file_path, framerate=24)
 
     if success:
-        print("
-Conversion finished successfully!")
+        print("\nConversion finished successfully!")
     else:
-        print("
-Conversion failed. Please check the errors above.")
-    
-    input("Press Enter to exit.")
+        print("\nConversion failed. Please check the errors above.")
+    print("Press Enter to exit.")
+    input() # Waits for user input
 
 
 if __name__ == '__main__':

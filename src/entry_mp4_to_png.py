@@ -15,27 +15,27 @@ def main():
     # The second argument (sys.argv[1]) is the file path from the context menu.
     if len(sys.argv) < 2:
         print("Error: No file path provided.")
-        input("Press Enter to exit.") # Keeps the window open to see the error
+        print("Press Enter to exit.") # Keeps the window open to see the error
+        input()
         return
 
     video_path = sys.argv[1]
 
     if not os.path.exists(video_path):
         print(f"Error: The file '{video_path}' does not exist.")
-        input("Press Enter to exit.")
+        print("Press Enter to exit.")
+        input()
         return
         
     print(f"File to convert: {video_path}")
     success = converter.convert_mp4_to_png_sequence(video_path)
 
     if success:
-        print("
-Conversion finished successfully!")
+        print("\nConversion finished successfully!")
     else:
-        print("
-Conversion failed. Please check the errors above.")
-    
-    input("Press Enter to exit.")
+        print("\nConversion failed. Please check the errors above.")
+    print("Press Enter to exit.")
+    input() # Waits for user input
 
 
 if __name__ == '__main__':

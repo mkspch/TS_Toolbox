@@ -130,12 +130,7 @@ echo.
 :: 6. Add to Path and Registry Keys for Context Menu
 echo [STEP 6/7] Adding FFmpeg to user PATH and creating context menu entries...
 
-echo    Adding FFmpeg to user PATH...
-:: Add ffmpeg bin to the user's PATH permanently.
-setx PATH "%PATH%;%FFMPEG_DIR%\bin"
-if %errorlevel% neq 0 (
-    echo [WARNING] Failed to add FFmpeg to the user's PATH. The scripts may not run correctly.
-)
+echo    Done.
 
 echo    Creating context menu for .mp4 files...
 REG ADD "HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\.mp4\shell\ConvertMP4toPNG" /ve /d "Convert to PNG Sequence" /f
