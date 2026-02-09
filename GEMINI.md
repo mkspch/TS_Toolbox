@@ -14,6 +14,7 @@ The core conversion logic, residing in `src/converter.py`, handles:
 *   Image contact sheet creation from multiple selected images.
 *   Video contact sheet creation from multiple selected videos.
 *   Video resizing to a specified width.
+*   Splitting multi-part EXR files into individual AOV files.
 
 The toolbox integrates seamlessly with the Windows context menu. Users can initiate conversions by simply right-clicking on selected files, accessing a "TS_Toolbox" main menu with specific conversion options. The management of these context menu entries is handled by `src/registry_manager.py`, which is designed to support non-administrative installation for the current user. Utility functions in `src/utils.py` assist in the detection and handling of image sequences.
 
@@ -38,7 +39,7 @@ The project's setup is designed to create a portable environment.
 *   **Running Conversions:**
     1.  After a successful installation (and a potential restart of Windows Explorer or your machine), right-click on an image (MP4, PNG, EXR) or video file in Windows Explorer.
     2.  A "TS_Toolbox" submenu will appear in the context menu.
-    3.  Select the desired conversion option (e.g., "VID > PNG", "VID > JPG", "IMG > MP4", "EXR > MP4 (ACEScg-sRGB)", "IMG > Half Size", "IMG > Resize", "IMG > Contact Sheet", "VID > Contact Sheet", "VID > Resize").
+    3.  Select the desired conversion option (e.g., "VID > PNG", "VID > JPG", "IMG > MP4", "EXR > MP4 (ACEScg-sRGB)", "IMG > Half Size", "IMG > Resize", "IMG > Contact Sheet", "VID > Contact Sheet", "VID > Resize", "EXR > Split AOVs").
     4.  A terminal window will open, display progress, and report the results of the conversion.
 
 ## Development Conventions

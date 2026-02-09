@@ -23,6 +23,7 @@ SUBMENU_ITEMS = [
     ("IMG > Contact Sheet", "entry_img_contactsheet.py"),
     ("VID > Contact Sheet", "entry_video_contact_sheet.py"),
     ("VID > Resize", "entry_vid_resize.py"), # New entry
+    ("EXR > Split AOVs", "entry_exr_split_aovs.py"), # New entry
 ]
 
 def get_install_root_path():
@@ -63,6 +64,8 @@ def add_context_menu_entries():
                 elif display_text == "VID > Contact Sheet": # For video contact sheet, pywin32 fetches files
                     command_args = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}"' # No args needed, script gets selection
                 elif display_text == "VID > Resize": # For video resize, pywin32 fetches files
+                    command_args = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}"' # No args needed, script gets selection
+                elif display_text == "EXR > Split AOVs": # For EXR Split AOVs, pywin32 fetches files
                     command_args = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}"' # No args needed, script gets selection
                 else:
                     command_args = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}" "%V"'
