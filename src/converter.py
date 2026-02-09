@@ -16,15 +16,16 @@ except ImportError:
     OCIO = None
     OIIO = None
 
-def _get_tool_path(tool_name):
+def _get_tool_path(tool_exe_name): # Renamed tool_name to tool_exe_name for clarity
     local_app_data = os.environ.get('LOCALAPPDATA')
     if not local_app_data:
         print("CRITICAL ERROR: LOCALAPPDATA environment variable not found.")
         return None
 
-    # Construct the path based on the install.bat logic
-    tool_path = os.path.join(local_app_data, 'Programs', 'TS_Toolbox', tool_name, 'bin', f'{tool_name}.exe')
-    return tool_path
+    # Both ffmpeg.exe and ffprobe.exe are located in the 'ffmpeg/bin' directory
+    tool_dir = os.path.join(local_app_data, 'Programs', 'TS_Toolbox', 'ffmpeg', 'bin')
+    tool_exe_path = os.path.join(tool_dir, f'{tool_exe_name}.exe')
+    return tool_exe_path
 
 FFMPEG_EXE = _get_tool_path('ffmpeg')
 FFPROBE_EXE = _get_tool_path('ffprobe')
