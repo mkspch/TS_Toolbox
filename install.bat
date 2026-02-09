@@ -36,6 +36,12 @@ set "FFMPEG_URL=https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip
 set "FFMPEG_ZIP=ffmpeg.zip"
 set "FFMPEG_DIR=%TOOL_DIR%\ffmpeg"
 
+:: Real-ESRGAN (ncnn Vulkan portable)
+set "REALESRGAN_URL=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-windows.zip"
+set "REALESRGAN_ZIP=realesrgan.zip"
+set "REALESRGAN_DIR=%TOOL_DIR%\realesrgan"
+set "REALESRGAN_EXE_NAME=realesrgan-ncnn-vulkan.exe"
+
 :: --- Python Scripts Repository ---
 :: This is the repository containing converter.py, utils.py, etc.
 :: IMPORTANT: For minimal installation size, ensure your Git repository for this tool
@@ -70,6 +76,7 @@ if not exist "%TOOL_DIR%" mkdir "%TOOL_DIR%"
 if not exist "%PYTHON_DIR%" mkdir "%PYTHON_DIR%"
 if not exist "%GIT_DIR%" mkdir "%GIT_DIR%"
 if not exist "%FFMPEG_DIR%" mkdir "%FFMPEG_DIR%"
+if not exist "%REALESRGAN_DIR%" mkdir "%REALESRGAN_DIR%"
 echo    Done.
 echo.
 
@@ -81,6 +88,12 @@ echo    Downloading Git...
 curl -L "%GIT_URL%" -o "%TOOL_DIR%\%GIT_EXE%"
 echo    Downloading FFmpeg...
 curl -L "%FFMPEG_URL%" -o "%TOOL_DIR%\%FFMPEG_ZIP%"
+echo    Downloading Real-ESRGAN...
+curl -L "%REALESRGAN_URL%" -o "%TOOL_DIR%\%REALESRGAN_ZIP%"
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to download Real-ESRGAN. Please check the URL and your connection.
+    goto:error
+)
 echo    Done.
 echo.
 
@@ -93,6 +106,8 @@ echo    Extracting Git...
 start /wait "" "%TOOL_DIR%\%GIT_EXE%" -o"%GIT_DIR%" -y
 echo    Extracting FFmpeg...
 tar -xf "%TOOL_DIR%\%FFMPEG_ZIP%" -C "%FFMPEG_DIR%" --strip-components=1
+echo    Extracting Real-ESRGAN...
+tar -xf "%TOOL_DIR%\%REALESRGAN_ZIP%" -C "%REALESRGAN_DIR%"
 echo    Done.
 echo.
 
@@ -163,6 +178,7 @@ pause
 del "%TOOL_DIR%\%PYTHON_ZIP%"
 del "%TOOL_DIR%\%GIT_EXE%"
 del "%TOOL_DIR%\%FFMPEG_ZIP%"
+del "%TOOL_DIR%\%REALESRGAN_ZIP%"
 del "%TOOL_DIR%\get-pip.py"
 pause
 endlocal

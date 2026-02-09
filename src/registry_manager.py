@@ -21,6 +21,7 @@ SUBMENU_ITEMS = [
     ("IMG > Resize", "entry_img_resize.py"),
     ("IMG > Half Size", "entry_img_half_size.py"),
     ("IMG > Contact Sheet", "entry_img_contactsheet.py"),
+    ("IMG > Upscale", "entry_img_upscale.py"),
     ("VID > PNG", "entry_mp4_to_png.py"),
     ("VID > JPG", "entry_mp4_to_jpg.py"),
     ("VID > Resize", "entry_vid_resize.py"),
@@ -91,7 +92,7 @@ def add_context_menu_entries():
                 else:
                     command_args = f'"{python_exe}" "{os.path.join(scripts_path, script_name)}" "%V"'
                 
-                command = f'cmd.exe /c "{command_args}"' # Use cmd.exe /c here for production
+                command = f'cmd.exe /k "{command_args}"' # Use cmd.exe /k here to keep the window open for debugging
                 with winreg.CreateKey(key, "command") as cmd_key:
                     winreg.SetValueEx(cmd_key, "", 0, winreg.REG_SZ, command)
             print(f"  Added submenu item: '{display_text}'")

@@ -30,6 +30,9 @@ def _get_tool_path(tool_exe_name): # Renamed tool_name to tool_exe_name for clar
 FFMPEG_EXE = _get_tool_path('ffmpeg')
 FFPROBE_EXE = _get_tool_path('ffprobe')
 
+REALESRGAN_EXE_NAME = "realesrgan-ncnn-vulkan.exe"
+REALESRGAN_EXE = os.path.join(os.environ.get('LOCALAPPDATA'), 'Programs', 'TS_Toolbox', 'realesrgan', REALESRGAN_EXE_NAME)
+
 def convert_mp4_to_png_sequence(video_path):
     print(f"DEBUG: FFMPEG_EXE resolved to: {FFMPEG_EXE}")
     if not os.path.exists(FFMPEG_EXE):
@@ -1042,3 +1045,77 @@ def split_exr_aovs(exr_path):
         import traceback
         traceback.print_exc()
         return False
+
+
+def upscale_image_realesrgan(image_paths, model_name="realesrgan-x4plus", scale=4):
+    """
+    Upscales images using Real-ESRGAN.
+
+    Args:
+        image_paths (list): A list of full paths to the input image files.
+        model_name (str): The name of the Real-ESRGAN model to use (e.g., "realesrgan-x4plus").
+        scale (int): The upscaling factor (e.g., 2, 4).
+
+    Returns:
+        bool: True if successful, False otherwise.
+    """
+    if not os.path.exists(REALESRGAN_EXE):
+        print(f"ERROR: Real-ESRGAN executable not found at '{REALESRGAN_EXE}'.")
+        print("Please ensure Real-ESRGAN is correctly installed and accessible at this path (run install.bat).")
+        return False
+
+    all_successful = True
+    for image_path in image_paths:
+        if not os.path.exists(image_path):
+            print(f"Warning: Image file not found and skipped: {image_path}")
+            all_successful = False
+            continue
+
+        input_dir = os.path.dirname(image_path)
+        base_name, ext = os.path.splitext(os.path.basename(image_path))
+        
+        # Create a new output subdirectory for the upscaled images
+        upscaled_output_folder = os.path.join(input_dir, f"{base_name}_upscaled_esrgan")
+        os.makedirs(upscaled_output_folder, exist_ok=True)
+
+        # Construct the full output file path within the new folder
+        # The output filename will include model and scale info
+        output_file_basename = f"{base_name}_upscaled_{model_name}_x{scale}.png"
+        final_output_path_for_realesrgan = os.path.join(upscaled_output_folder, output_file_basename)
+
+        print(f"Upscaling '{os.path.basename(image_path)}' using model '{model_name}' (x{scale})...")
+        
+        command = [
+            REALESRGAN_EXE,
+            "-i", image_path,
+            "-o", final_output_path_for_realesrgan, # This is now a specific file path
+            "-n", model_name,
+            "-s", str(scale),
+            "-f", "png" # Explicitly output as PNG
+        ]
+
+        print(f"Real-ESRGAN Command: {' '.join(command)}")
+
+        try:
+            # capture_output=True to suppress stdout/stderr unless there's an error
+            result = subprocess.run(command, check=True, capture_output=True, text=True)
+            print(f"Successfully upscaled '{os.path.basename(image_path)}' to {upscaled_output_folder}")
+            # Optionally print stdout/stderr if useful
+            # if result.stdout:
+            #     print("STDOUT:", result.stdout)
+            # if result.stderr:
+            #     print("STDERR:", result.stderr)
+        except subprocess.CalledProcessError as e:
+            print(f"Error during Real-ESRGAN execution for '{os.path.basename(image_path)}':")
+            print(f"Command: {' '.join(e.cmd)}")
+            print(f"Return Code: {e.returncode}")
+            print(f"Output: {e.stdout}")
+            print(f"Error Output: {e.stderr}")
+            all_successful = False
+        except Exception as e:
+            print(f"An unexpected error occurred during upscaling '{os.path.basename(image_path)}': {e}")
+            import traceback
+            traceback.print_exc()
+            all_successful = False
+            
+    return all_successful
